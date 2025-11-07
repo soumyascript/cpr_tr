@@ -1,0 +1,65 @@
+name: drish_cpr_ble
+description: "CPR Training app with BLE connectivity to ESP32"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  vosk_flutter_2: ^1.0.5
+  path_provider: ^2.1.1
+  speech_to_text: ^7.3.0
+  flutter_blue_plus: ^1.32.12
+  provider: ^6.1.2
+  sqflite: ^2.4.2
+  shared_preferences: ^2.2.2
+  file: ^7.0.0
+  csv: ^6.0.0
+  json_annotation: ^4.8.1
+  http: ^1.5.0
+  fl_chart: ^1.1.0
+  permission_handler: ^11.3.0
+  device_info_plus: ^12.1.0
+  package_info_plus: ^9.0.0
+  cupertino_icons: ^1.0.6
+  flutter_secure_storage: ^9.2.2
+  intl: ^0.20.2
+  just_audio: ^0.10.5
+  dio: ^5.7.0
+  crypto: ^3.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.8
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1   # <-- Added here
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/models/vosk-model-small-en-us-0.15/
+    - assets/images/
+    - assets/audio/
+  
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
+
+# Launcher icon configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/cpr_app_icon.png"   # <-- put your CPR icon here
+  adaptive_icon_background: "#FFFFFF"        # optional, Android only
+  adaptive_icon_foreground: "assets/images/cpr_app_icon.png"
