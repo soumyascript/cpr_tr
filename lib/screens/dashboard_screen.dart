@@ -2301,6 +2301,8 @@ import '../services/db_service.dart';
 import '../models/models.dart';
 import '../utils/responsive_utils.dart';
 import '../widgets/responsive_widgets.dart';
+import '../widgets/profile_logout_bar.dart';
+
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -2722,6 +2724,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           child: _buildGraphPanel(),
         ),
         SizedBox(height: ResponsiveUtils.getSpacing(context)), // Bottom padding
+        const ProfileLogoutBar(),
+        SizedBox(height: 40),
       ],
     );
   }

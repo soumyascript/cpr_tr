@@ -887,28 +887,3 @@ ${ccf < 0.6 ? '- Work on reducing pause times between compression cycles' : ''}
     );
   }
 }
-
-
-
-//
-// // lib/screens/debrief_screen.dart
-// import 'package:flutter/material.dart';
-//
-// class DebriefScreen extends StatelessWidget {
-//   const DebriefScreen({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Session Debrief'),
-//       ),
-//       body: const Center(
-//         child: Text(
-//           'Debrief feature not implemented yet.',
-//           style: TextStyle(fontSize: 16),
-//         ),
-//       ),
-//     );
-//   }
-// }

@@ -17,7 +17,7 @@
 // import 'services/audio_service.dart';
 // import 'services/voice_service.dart';
 // import 'services/sync_service.dart';
-// import 'screens/dashboard_screen.dart' ;
+// import 'screens/dashboard_screen.dart';
 // import 'screens/system_config_screen.dart';
 // import 'screens/cloud_config_screen.dart';
 // import 'screens/data_viewer_screen.dart';
@@ -192,7 +192,7 @@
 //             );
 //             break;
 //           case BluetoothAdapterState.on:
-//             // Bluetooth is ready
+//           // Bluetooth is ready
 //             break;
 //           default:
 //             break;
@@ -309,19 +309,20 @@
 //       ),
 //       floatingActionButton: _selectedIndex == 0
 //           ? FloatingActionButton.extended(
-//               onPressed: () {
-//                 Navigator.pushNamed(context, '/debrief');
-//               },
-//               icon: const Icon(Icons.assessment),
-//               label: const Text('Debrief'),
-//               backgroundColor: Theme.of(context).colorScheme.secondary,
-//             )
+//         onPressed: () {
+//           Navigator.pushNamed(context, '/debrief');
+//         },
+//         icon: const Icon(Icons.assessment),
+//         label: const Text('Debrief'),
+//         backgroundColor: Theme.of(context).colorScheme.secondary,
+//       )
 //           : null,
 //     );
 //   }
 // }
 
-//cpr_training_app/lib/main.dart
+
+// cpr_training_app/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -346,6 +347,11 @@ import 'screens/cloud_config_screen.dart';
 import 'screens/data_viewer_screen.dart';
 import 'screens/replay_screen.dart';
 import 'screens/debrief_screen.dart';
+
+// NEW imports (auth)
+import 'session_manager.dart';
+import 'screens/login_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -397,7 +403,6 @@ class CPRTrainingApp extends StatelessWidget {
             scrolledUnderElevation: 0,
           ),
           cardTheme: CardThemeData(
-            // ÃƒÆ’Ã‚Â¢Ãƒâ€¦"ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ FIXED
             elevation: 8,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -414,15 +419,41 @@ class CPRTrainingApp extends StatelessWidget {
         ),
         initialRoute: '/',
         routes: {
-          '/': (context) => const CPRMainScreen(),
+          '/': (context) => const _AuthGate(), // choose login or app
+          '/login': (context) => const LoginScreen(),
+          '/profile': (context) => const ProfileScreen(),
+
           '/dashboard': (context) => const DashboardScreen(),
           '/system-config': (context) => const SystemConfigScreen(),
           '/cloud-config': (context) => const CloudConfigScreen(),
           '/data-viewer': (context) => const DataViewerScreen(),
           '/replay': (context) => const ReplayScreen(),
           '/debrief': (context) => const DebriefScreen(),
+          '/home': (context) => const CPRMainScreen(), // post-login
         },
       ),
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: SessionManager.isLoggedIn(),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snap.data == true) {
+          return const CPRMainScreen();
+        }
+        return const LoginScreen();
+      },
     );
   }
 }
@@ -502,7 +533,6 @@ class _CPRMainScreenState extends State<CPRMainScreen> {
       return;
     }
 
-    // Listen to Bluetooth state changes
     FlutterBluePlus.adapterState.listen((BluetoothAdapterState state) {
       if (mounted) {
         switch (state) {
@@ -515,7 +545,6 @@ class _CPRMainScreenState extends State<CPRMainScreen> {
             );
             break;
           case BluetoothAdapterState.on:
-          // Bluetooth is ready
             break;
           default:
             break;
@@ -615,10 +644,8 @@ class _CPRMainScreenState extends State<CPRMainScreen> {
           });
         },
         selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Theme.of(context)
-            .colorScheme
-            .onSurface
-            .withValues(alpha: 0.6), // ÃƒÆ’Ã‚Â¢Ãƒâ€¦"ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ FIXED
+        unselectedItemColor:
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
