@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 
 class SessionManager {
   static const _kUserKey = 'auth_username';
@@ -24,5 +25,13 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kUserKey);
     await prefs.remove(_kPassKey);
+  }
+  // ADD THESE METHODS TO YOUR EXISTING FILE
+  static Future<void> clearAuthData() async {
+    await AuthService.clearAuthData();
+  }
+
+  static Future<Map<String, dynamic>?> getAuthUser() async {
+    return await AuthService.getUserData();
   }
 }

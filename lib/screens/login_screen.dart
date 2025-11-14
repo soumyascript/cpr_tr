@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../session_manager.dart';
+import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   static const route = '/login';
@@ -18,10 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _statusMessage;
   bool _statusOk = false;
 
-  // Hardcoded demo credentials
-  static const _dummyUser = 'demo';
-  static const _dummyPass = 'demo123';
-
   @override
   void dispose() {
     _userCtrl.dispose();
@@ -36,26 +35,59 @@ class _LoginScreenState extends State<LoginScreen> {
       _statusMessage = null;
     });
 
-    final u = _userCtrl.text.trim();
-    final p = _passCtrl.text.trim();
+    final username = _userCtrl.text.trim();
+    final password = _passCtrl.text.trim();
 
-    await Future.delayed(const Duration(milliseconds: 200));
+    try {
+      // REAL API CALL to your login endpoint
+      final result = await AuthService.login(username, password);
 
-    if (u == _dummyUser && p == _dummyPass) {
-      await SessionManager.saveCredentials(u, p);
-      if (!mounted) return;
-      setState(() {
-        _statusOk = true;
-        _statusMessage = 'Login successful';
-      });
-      await Future.delayed(const Duration(milliseconds: 350));
-      if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
-    } else {
+      // DEBUG: Print the result structure
+      print('Login Result: $result');
+
+      if (result['success'] == true) {
+        // SAFE ACCESS with null checks
+        final token = result['token']?.toString();
+        final user = result['user'];
+
+        if (token == null || user == null) {
+          if (!mounted) return;
+          setState(() {
+            _statusOk = false;
+            _statusMessage = 'Invalid response from server';
+          });
+          return;
+        }
+
+        // Update auth provider
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await authProvider.login(token, user);
+
+        // Keep session manager for backward compatibility
+        await SessionManager.saveCredentials(username, password);
+
+        if (!mounted) return;
+        setState(() {
+          _statusOk = true;
+          _statusMessage = 'Login successful';
+        });
+
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _statusOk = false;
+          _statusMessage = result['message']?.toString() ?? 'Login failed';
+        });
+      }
+    } catch (e) {
+      print('Login screen error: $e');
       if (!mounted) return;
       setState(() {
         _statusOk = false;
-        _statusMessage = 'Invalid credentials';
+        _statusMessage = 'Login failed: ${e.toString()}';
       });
     }
 
@@ -127,12 +159,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _userCtrl,
                               decoration: const InputDecoration(
-                                labelText: 'User ID',
+                                labelText: 'Username',
                                 prefixIcon: Icon(Icons.person_outline),
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) =>
-                              (v == null || v.isEmpty) ? 'Enter user id' : null,
+                              (v == null || v.isEmpty) ? 'Enter username' : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
@@ -162,16 +194,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child:
                                 CircularProgressIndicator(strokeWidth: 2),
                               )
-                                  : const Text('Next'),
+                                  : const Text('Login'),
                             ),
                             const SizedBox(height: 8),
                             if (_statusMessage != null)
-                              Text(
-                                _statusMessage!,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _statusOk ? Colors.green : Colors.red,
-                                  fontWeight: FontWeight.w600,
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: _statusOk ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                  border: Border.all(
+                                    color: _statusOk ? Colors.green : Colors.red,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _statusMessage!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _statusOk ? Colors.green : Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                           ],

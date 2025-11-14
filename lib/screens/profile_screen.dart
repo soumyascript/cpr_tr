@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../session_manager.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart'; // ADD THIS
 
 class ProfileScreen extends StatefulWidget {
   static const route = '/profile';
@@ -10,26 +11,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String? _user;
-  String? _pass;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final (u, p) = await SessionManager.getCredentials();
-    if (!mounted) return;
-    setState(() {
-      _user = u;
-      _pass = p;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: Padding(
@@ -37,15 +23,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Stored Credentials (Demo Only)',
+            const Text('User Profile',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _Item(label: 'User ID', value: _user ?? '—'),
-            const SizedBox(height: 8),
-            _Item(label: 'Password', value: _pass ?? '—'),
+            if (user != null) ...[
+              _Item(label: 'User ID', value: user['Unm'] ?? '—'),
+              const SizedBox(height: 8),
+              _Item(label: 'Name', value: user['name'] ?? '—'),
+              const SizedBox(height: 8),
+              _Item(label: 'User Type', value: user['utype_id'] ?? '—'),
+              const SizedBox(height: 8),
+              _Item(label: 'Organization', value: user['org_id'] ?? '—'),
+              const SizedBox(height: 8),
+              _Item(label: 'Mobile', value: user['umob'] ?? '—'),
+              const SizedBox(height: 8),
+              _Item(label: 'Status', value: user['ustatus'] == true ? 'Active' : 'Inactive'),
+              const SizedBox(height: 8),
+              _Item(label: 'Role', value: user['role']?['utype_name'] ?? '—'),
+            ] else ...[
+              const Text('No user data available'),
+            ],
             const SizedBox(height: 24),
             const Text(
-              'Note: Saved in SharedPreferences (plain text) for demo purposes.\nDo NOT do this in production.',
+              'Note: User data fetched from API',
             ),
           ],
         ),

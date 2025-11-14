@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart'; // ADD THIS
+import 'responsive_widgets.dart';
 import '../session_manager.dart';
-import 'responsive_widgets.dart'; // <-- to use ResponsiveButton
 
 class ProfileLogoutBar extends StatelessWidget {
   const ProfileLogoutBar({super.key});
 
   Future<void> _logout(BuildContext context) async {
-    await SessionManager.logout();
+    // REPLACE with auth service
+    await AuthService.clearAuthData();
+    await SessionManager.logout(); // Keep for backward compatibility
     if (!context.mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
