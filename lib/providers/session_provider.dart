@@ -1,4 +1,4 @@
-//cpr_training_app/lib/providers/session_provider.dart
+// dual ble2
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
@@ -11,12 +11,20 @@ class SessionProvider with ChangeNotifier {
   bool _isSessionActive = false;
   int _nextSessionNumber = 1;
 
+  // PRESSURE STATE TRACKING - ADDED
+  bool _isPressureActive = false;
+  double _currentPressure = 0.0;
+
   // Getters
   CPRSession? get currentSession => _currentSession;
   bool get isSessionActive => _isSessionActive;
   Duration get sessionDuration => _sessionDuration;
   int get nextSessionNumber => _nextSessionNumber;
   String get formattedDuration => _formatDuration(_sessionDuration);
+
+  // PRESSURE GETTERS - ADDED
+  bool get isPressureActive => _isPressureActive;
+  double get currentPressure => _currentPressure;
 
   // Initialize provider
   Future<void> initialize() async {
@@ -26,7 +34,14 @@ class SessionProvider with ChangeNotifier {
     );
   }
 
-  // Start a new session
+  // PRESSURE STATE MANAGEMENT - ADDED
+  void updatePressureState(bool isActive, double pressure) {
+    _isPressureActive = isActive;
+    _currentPressure = pressure;
+    notifyListeners();
+  }
+
+  // Start a new session - MODIFIED: No pressure check for starting session
   Future<CPRSession> startSession({String? notes}) async {
     if (_isSessionActive) {
       throw Exception('A session is already active');
@@ -69,7 +84,7 @@ class SessionProvider with ChangeNotifier {
     }
   }
 
-  // End current session
+  // UPDATED: End current session with metrics finalization
   Future<CPRSession?> endSession() async {
     if (!_isSessionActive || _currentSession == null) {
       throw Exception('No active session to end');
@@ -90,6 +105,9 @@ class SessionProvider with ChangeNotifier {
 
       // Update in database
       await DBService.instance.updateSession(updatedSession);
+
+      // NEW: Finalize metrics before updating state (this preserves the data)
+      // Note: We'll call this from dashboard where we have context access
 
       // Update state
       _currentSession = updatedSession;

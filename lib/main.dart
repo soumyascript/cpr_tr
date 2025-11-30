@@ -1,3 +1,4 @@
+// Dual BLE
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -10,7 +11,7 @@ import 'providers/alerts_provider.dart';
 import 'providers/graph_provider.dart';
 import 'providers/sync_provider.dart';
 import 'providers/replay_provider.dart';
-import 'providers/auth_provider.dart'; // ADD THIS
+import 'providers/auth_provider.dart';
 import 'services/db_service.dart';
 import 'services/sensor_service.dart';
 import 'services/processing_engine.dart';
@@ -51,7 +52,7 @@ class CPRTrainingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()), // ADD THIS
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ConfigProvider()),
         ChangeNotifierProvider(create: (_) => SessionProvider()),
         ChangeNotifierProvider(create: (_) => MetricsProvider()),
@@ -59,8 +60,9 @@ class CPRTrainingApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GraphProvider()),
         ChangeNotifierProvider(create: (_) => SyncProvider()),
         ChangeNotifierProvider(create: (_) => ReplayProvider()),
-        Provider(create: (_) => SensorService()),
-        Provider(create: (_) => ProcessingEngine()),
+        // IMPORTANT: Initialize services in correct order
+        Provider<SensorService>(create: (_) => SensorService()),
+        Provider<ProcessingEngine>(create: (_) => ProcessingEngine()),
         Provider(create: (_) => AudioService.instance),
         Provider(create: (_) => VoiceService.instance),
         Provider(create: (_) => SyncService.instance),
@@ -68,32 +70,85 @@ class CPRTrainingApp extends StatelessWidget {
       child: MaterialApp(
         title: 'CPR Training System',
         debugShowCheckedModeBanner: false,
+        // aa
+        // theme: ThemeData(
+        //   useMaterial3: true,
+        //   colorScheme: ColorScheme.fromSeed(
+        //     seedColor: const Color(0xFF2E7D32),
+        //     brightness: Brightness.light,
+        //   ),
+        //   appBarTheme: const AppBarTheme(
+        //     centerTitle: true,
+        //     elevation: 0,
+        //     scrolledUnderElevation: 0,
+        //   ),
+        //   cardTheme: CardThemeData(
+        //     elevation: 8,
+        //     shape: RoundedRectangleBorder(
+        //       borderRadius: BorderRadius.circular(16),
+        //     ),
+        //     margin: EdgeInsets.all(8),
+        //   ),
+        //   elevatedButtonTheme: ElevatedButtonThemeData(
+        //     style: ElevatedButton.styleFrom(
+        //       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        //       shape: RoundedRectangleBorder(
+        //         borderRadius: BorderRadius.circular(12),
+        //       ),
+        //     ),
+        //   ),
+        // ),
+        // bb
+
+        // In CPRTrainingApp build method, replace the theme section:
         theme: ThemeData(
           useMaterial3: true,
+          brightness: Brightness.dark, // Force dark mode
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF2E7D32),
-            brightness: Brightness.light,
+            seedColor: Color(0xFF4CAF50), // Slightly brighter green for dark mode
+            brightness: Brightness.dark, // Dark color scheme
           ),
-          appBarTheme: const AppBarTheme(
+          appBarTheme: AppBarTheme(
             centerTitle: true,
             elevation: 0,
             scrolledUnderElevation: 0,
+            backgroundColor: Color(0xFF121212), // Dark app bar
           ),
+          scaffoldBackgroundColor: Color(0xFF121212), // Dark background
           cardTheme: CardThemeData(
             elevation: 8,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
+            color: Color(0xFF1E1E1E), // Dark card background
+            margin: EdgeInsets.all(8),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              backgroundColor: Color(0xFF2E7D32), // Darker green for buttons
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
+          bottomNavigationBarTheme: BottomNavigationBarThemeData(
+            backgroundColor: Color(0xFF1E1E1E), // Dark bottom nav
+            selectedItemColor: Color(0xFF4CAF50), // Bright green for selected
+            unselectedItemColor: Colors.grey, // Grey for unselected
+          ),
+          dialogBackgroundColor: Color(0xFF1E1E1E), // Dark dialogs
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Color(0xFF2A2A2A), // Dark input fields
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
+
         initialRoute: '/',
         routes: {
           '/': (context) => const _AuthGate(), // choose login or app
@@ -130,7 +185,6 @@ class _AuthGate extends StatelessWidget {
   }
 }
 
-// REST OF YOUR FILE REMAINS EXACTLY THE SAME...
 class CPRMainScreen extends StatefulWidget {
   const CPRMainScreen({super.key});
 
@@ -157,6 +211,10 @@ class _CPRMainScreenState extends State<CPRMainScreen> {
     'Session Replay',
   ];
 
+  // Add pressure state tracking
+  bool _isPressureActive = false;
+  double _currentPressure = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -175,9 +233,51 @@ class _CPRMainScreenState extends State<CPRMainScreen> {
       await context.read<ConfigProvider>().loadConfigurations();
       if (mounted) {
         final config = context.read<ConfigProvider>().systemConfig;
-        context.read<MetricsProvider>().initialize(config);
+
+        // IMPORTANT: Initialize processing engine with config
+        final processingEngine = context.read<ProcessingEngine>();
+        processingEngine.updateConfig(config);
+
+        // FIXED: Get the shared processing engine and metrics provider instances
+        final metricsProvider = context.read<MetricsProvider>();
+
+        // FIXED: Connect metrics provider to the shared processing engine
+        // This ensures both use the same ProcessingEngine instance
+        metricsProvider.setProcessingEngine(processingEngine);
+
+        // IMPORTANT: Initialize metrics provider with config
+        metricsProvider.initialize(config);
+
+        // IMPORTANT: Connect sensor service to processing engine with pressure monitoring
+        _setupSensorDataForwarding();
       }
     }
+  }
+
+  // UPDATED: Setup data forwarding with pressure monitoring
+  void _setupSensorDataForwarding() {
+    final sensorService = context.read<SensorService>();
+    final processingEngine = context.read<ProcessingEngine>();
+
+    // Listen to pressure stream and update processing engine
+    sensorService.pressureStream.listen((pressure) {
+      setState(() {
+        _currentPressure = pressure;
+        _isPressureActive = pressure > 10.0;
+      });
+
+      // Update processing engine pressure state
+      processingEngine.setPressureState(_isPressureActive);
+
+      // Update session provider for UI
+      final sessionProvider = context.read<SessionProvider>();
+      sessionProvider.updatePressureState(_isPressureActive, pressure);
+    });
+
+    // Listen to sensor data stream and forward to processing engine
+    sensorService.sensorDataStream.listen((sensorData) {
+      processingEngine.processSensorDataFromDevice(sensorData);
+    });
   }
 
   Future<void> _requestPermissions() async {
@@ -234,41 +334,78 @@ class _CPRMainScreenState extends State<CPRMainScreen> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
+          // UPDATED: Show pressure status alongside session status
           Consumer<SessionProvider>(
             builder: (context, sessionProvider, child) {
-              return Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: sessionProvider.isSessionActive
-                      ? Colors.red
-                      : Colors.green,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      sessionProvider.isSessionActive
-                          ? Icons.stop
-                          : Icons.play_arrow,
-                      size: 16,
-                      color: Colors.white,
+              return Row(
+                children: [
+                  // Pressure indicator
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      sessionProvider.isSessionActive ? 'ACTIVE' : 'IDLE',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    decoration: BoxDecoration(
+                      color: _isPressureActive ? Colors.green : Colors.orange,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isPressureActive ? Icons.check_circle : Icons.info,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _isPressureActive ? 'PRESSURE' : '${_currentPressure.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Session status
+                  Container(
+                    margin: const EdgeInsets.only(right: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: sessionProvider.isSessionActive
+                          ? Colors.red
+                          : Colors.grey,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          sessionProvider.isSessionActive
+                              ? Icons.stop
+                              : Icons.play_arrow,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          sessionProvider.isSessionActive ? 'ACTIVE' : 'IDLE',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               );
             },
           ),

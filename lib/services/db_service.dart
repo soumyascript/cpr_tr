@@ -136,10 +136,10 @@ class DBService {
 
   // Upgrade database
   Future<void> _upgradeDatabase(
-    Database db,
-    int oldVersion,
-    int newVersion,
-  ) async {
+      Database db,
+      int oldVersion,
+      int newVersion,
+      ) async {
     debugPrint('Upgrading database from version $oldVersion to $newVersion');
     // Add migration logic here when needed
   }
@@ -399,9 +399,9 @@ class DBService {
 
   // Get samples for session
   Future<List<SensorSample>> getSamplesForSession(
-    int sessionId, {
-    int? limit,
-  }) async {
+      int sessionId, {
+        int? limit,
+      }) async {
     final db = database;
 
     final results = await db.query(
@@ -417,10 +417,10 @@ class DBService {
 
   // Get samples in time range
   Future<List<SensorSample>> getSamplesInRange(
-    int sessionId,
-    DateTime startTime,
-    DateTime endTime,
-  ) async {
+      int sessionId,
+      DateTime startTime,
+      DateTime endTime,
+      ) async {
     final db = database;
 
     final results = await db.query(
@@ -469,10 +469,10 @@ class DBService {
 
   // Save configuration
   Future<void> saveConfig(
-    String name,
-    String kind,
-    Map<String, dynamic> config,
-  ) async {
+      String name,
+      String kind,
+      Map<String, dynamic> config,
+      ) async {
     final db = database;
 
     await db.insert(_configsTable, {
@@ -586,6 +586,124 @@ class DBService {
       'events': events.map((e) => e.toJson()).toList(),
       'exported_at': DateTime.now().toIso8601String(),
     };
+  }
+
+  // Export session data as CSV
+  Future<String> exportSessionDataAsCSV(int sessionId) async {
+    try {
+      final session = await getSessionById(sessionId);
+      if (session == null) {
+        throw Exception('Session not found');
+      }
+
+      final samples = await getSamplesForSession(sessionId);
+      final events = await getEventsForSession(sessionId);
+
+      // Create CSV content
+      final csvBuffer = StringBuffer();
+
+      // Session information
+      csvBuffer.writeln('CPR Training Session Data');
+      csvBuffer.writeln('Session ID,${session.id}');
+      csvBuffer.writeln('Session Number,${session.sessionNumber}');
+      csvBuffer.writeln('Started At,${session.startedAt.toIso8601String()}');
+      csvBuffer.writeln('Ended At,${session.endedAt?.toIso8601String() ?? "N/A"}');
+      csvBuffer.writeln('Duration (ms),${session.durationMs ?? "N/A"}');
+      csvBuffer.writeln('App Version,${session.appVersion}');
+      csvBuffer.writeln(); // Empty line
+
+      // Samples data
+      csvBuffer.writeln('SENSOR SAMPLES');
+      csvBuffer.writeln('Timestamp,Sensor1 Raw,Sensor2 Raw,Sensor1 Avg,Sensor2 Avg');
+      for (final sample in samples) {
+        csvBuffer.writeln('${sample.timestamp.toIso8601String()},${sample.sensor1Raw},${sample.sensor2Raw},${sample.sensor1Avg},${sample.sensor2Avg}');
+      }
+      csvBuffer.writeln(); // Empty line
+
+      // Events data
+      csvBuffer.writeln('EVENTS');
+      csvBuffer.writeln('Timestamp,Type,Payload');
+      for (final event in events) {
+        // Escape quotes in payload for CSV
+        final payloadString = event.payload.toString().replaceAll('"', '""');
+        csvBuffer.writeln('${event.timestamp.toIso8601String()},"${event.type}","$payloadString"');
+      }
+
+      return csvBuffer.toString();
+    } catch (e) {
+      debugPrint('Error exporting session data as CSV: $e');
+      rethrow;
+    }
+  }
+
+  // NEW: Enhanced CSV export for multi-device sessions
+  Future<String> exportSessionDataAsCSVWithDevices(int sessionId, Map<String, String> deviceNames) async {
+    try {
+      final session = await getSessionById(sessionId);
+      if (session == null) {
+        throw Exception('Session not found');
+      }
+
+      final samples = await getSamplesForSession(sessionId);
+      final events = await getEventsForSession(sessionId);
+
+      // Create CSV content with device info
+      final csvBuffer = StringBuffer();
+
+      // Session information
+      csvBuffer.writeln('CPR Training Session Data - Multi-Device');
+      csvBuffer.writeln('Session ID,${session.id}');
+      csvBuffer.writeln('Session Number,${session.sessionNumber}');
+      csvBuffer.writeln('Started At,${session.startedAt.toIso8601String()}');
+      csvBuffer.writeln('Ended At,${session.endedAt?.toIso8601String() ?? "N/A"}');
+      csvBuffer.writeln('Duration (ms),${session.durationMs ?? "N/A"}');
+      csvBuffer.writeln('App Version,${session.appVersion}');
+      csvBuffer.writeln('Connected Devices,${deviceNames.length}');
+
+      // List connected devices
+      for (final entry in deviceNames.entries) {
+        csvBuffer.writeln('Device ${entry.key},${entry.value}');
+      }
+
+      csvBuffer.writeln(); // Empty line
+
+      // Samples data
+      csvBuffer.writeln('SENSOR SAMPLES');
+      csvBuffer.writeln('Timestamp,Sensor1 Raw,Sensor2 Raw,Sensor1 Avg,Sensor2 Avg');
+      for (final sample in samples) {
+        csvBuffer.writeln('${sample.timestamp.toIso8601String()},${sample.sensor1Raw},${sample.sensor2Raw},${sample.sensor1Avg},${sample.sensor2Avg}');
+      }
+      csvBuffer.writeln(); // Empty line
+
+      // Events data
+      csvBuffer.writeln('EVENTS');
+      csvBuffer.writeln('Timestamp,Type,Payload');
+      for (final event in events) {
+        final payloadString = event.payload.toString().replaceAll('"', '""');
+        csvBuffer.writeln('${event.timestamp.toIso8601String()},"${event.type}","$payloadString"');
+      }
+
+      return csvBuffer.toString();
+    } catch (e) {
+      debugPrint('Error exporting session data as CSV with devices: $e');
+      rethrow;
+    }
+  }
+
+  // Get all sessions with basic info for CSV download
+  Future<List<Map<String, dynamic>>> getSessionsForExport() async {
+    final sessions = await getAllSessions();
+    return sessions.map((session) {
+      return {
+        'id': session.id,
+        'sessionNumber': session.sessionNumber,
+        'startedAt': session.startedAt,
+        'endedAt': session.endedAt,
+        'durationMs': session.durationMs,
+        'synced': session.synced,
+        'appVersion': session.appVersion,
+      };
+    }).toList();
   }
 
   // Get database statistics
